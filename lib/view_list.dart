@@ -98,24 +98,23 @@ class _ViewListScreenState extends State<ViewListScreen> {
     }
 
     final bytes = excel.encode();
+    if (bytes == null) return;
 
     if (kIsWeb) {
+      // 🔵 WEB CASE
       try {
-        final blob = html.Blob([bytes!]);
+        final blob = html.Blob([bytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
 
-        if (html.window.navigator.share != null) {
-          await html.window.navigator.share({
-            'title': 'Notes Export',
-            'text': 'Download your exported notes.',
-            'url': url,
-          });
-        } else {
-          final anchor = html.AnchorElement(href: url)
-            ..setAttribute('download', 'notes_export.xlsx')
-            ..click();
-          html.Url.revokeObjectUrl(url);
-        }
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'notes_export.xlsx')
+          ..click();
+
+        html.Url.revokeObjectUrl(url);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Exported notes downloaded!')),
+        );
       } catch (e) {
         final emailSubject = Uri.encodeComponent('Notes Export');
         final emailBody = Uri.encodeComponent('Please find attached the exported notes.');
@@ -123,27 +122,33 @@ class _ViewListScreenState extends State<ViewListScreen> {
         html.window.open(mailtoLink, '_self');
       }
     } else {
-      // Mobile App (iOS/Android)
-      final dir = await getTemporaryDirectory();
-      final filePath = '${dir.path}/notes_export.xlsx';
-      final file = File(filePath);
-      await file.writeAsBytes(bytes!);
+      // 🟢 MOBILE CASE
+      try {
+        final dir = await getTemporaryDirectory();
+        final filePath = '${dir.path}/notes_export.xlsx';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes);
 
-      final xFile = XFile(
-        filePath,
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      );
+        final xFile = XFile(
+          filePath,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
 
-      await Share.shareXFiles(
-        [xFile],
-        text: 'Please find attached the exported notes.',
-        subject: 'Notes Export',
-      );
+        await Share.shareXFiles(
+          [xFile],
+          text: 'Please find attached the exported notes.',
+          subject: 'Notes Export',
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notes export shared!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to export notes: $e')),
+        );
+      }
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Notes export initiated!')),
-    );
   }
 
   String formatDateTime(DateTime dateTime) {
@@ -225,7 +230,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
                   ],
                 ),
                 trailing: IconButton(
-                  icon: const Icon(CupertinoIcons.delete, color: Colors.yellow),
+                  icon: const Icon(CupertinoIcons.delete, color: Colors.redAccent),
                   onPressed: () => _deleteNote(note.id),
                 ),
               ),
