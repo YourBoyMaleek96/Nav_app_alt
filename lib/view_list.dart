@@ -100,21 +100,30 @@ class _ViewListScreenState extends State<ViewListScreen> {
     final bytes = excel.encode();
 
     if (kIsWeb) {
-      // Web platform - Try native share first
       try {
-        await Share.share(
-          'Exported Notes',
-          subject: 'Notes Export',
-        );
+        final blob = html.Blob([bytes!]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+
+        if (html.window.navigator.share != null) {
+          await html.window.navigator.share({
+            'title': 'Notes Export',
+            'text': 'Download your exported notes.',
+            'url': url,
+          });
+        } else {
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute('download', 'notes_export.xlsx')
+            ..click();
+          html.Url.revokeObjectUrl(url);
+        }
       } catch (e) {
-        // If navigator.share not supported, fallback to mailto
         final emailSubject = Uri.encodeComponent('Notes Export');
         final emailBody = Uri.encodeComponent('Please find attached the exported notes.');
         final mailtoLink = 'mailto:?subject=$emailSubject&body=$emailBody';
         html.window.open(mailtoLink, '_self');
       }
     } else {
-      // Mobile App (iOS/Android) - Share Excel file
+      // Mobile App (iOS/Android)
       final dir = await getTemporaryDirectory();
       final filePath = '${dir.path}/notes_export.xlsx';
       final file = File(filePath);
@@ -132,7 +141,6 @@ class _ViewListScreenState extends State<ViewListScreen> {
       );
     }
 
-    // Success snackbar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Notes export initiated!')),
     );
