@@ -225,7 +225,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
                   ],
                 ),
                 trailing: IconButton(
-                  icon: const Icon(CupertinoIcons.delete, color: Colors.redAccent),
+                  icon: const Icon(CupertinoIcons.delete, color: Colors.yellow),
                   onPressed: () => _deleteNote(note.id),
                 ),
               ),
