@@ -5,10 +5,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart'; // For mobile
-import 'package:universal_html/html.dart' as html; // For web
-import 'dart:io' show File; // For mobile
+import 'package:path_provider/path_provider.dart';
+import 'package:universal_html/html.dart' as html;
+import 'dart:io' show File;
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as syncfusion;
 import 'models/note_model.dart';
 import 'db/db_helper.dart';
 
@@ -78,54 +78,60 @@ class _ViewListScreenState extends State<ViewListScreen> {
     }
 
     final selectedNotes = _notes.where((n) => n.id != null && _selectedIds.contains(n.id)).toList();
-    final excel = Excel.createExcel();
-    final sheet = excel['Sheet1'];
+    final workbook = syncfusion.Workbook();
+    final sheet = workbook.worksheets[0];
 
-    sheet.appendRow(<CellValue?>[
-      TextCellValue('Text'),
-      TextCellValue('DateTime'),
-      TextCellValue('Latitude'),
-      TextCellValue('Longitude'),
-    ]);
+    sheet.getRangeByName('A1').setText('Text');
+    sheet.getRangeByName('B1').setText('DateTime');
+    sheet.getRangeByName('C1').setText('Latitude');
+    sheet.getRangeByName('D1').setText('Longitude');
 
-    for (var note in selectedNotes) {
-      sheet.appendRow(<CellValue?>[
-        TextCellValue(note.text),
-        DateTimeCellValue.fromDateTime(note.dateTime),
-        note.latitude != null ? DoubleCellValue(note.latitude!) : null,
-        note.longitude != null ? DoubleCellValue(note.longitude!) : null,
-      ]);
+    int maxImages = selectedNotes.fold<int>(0, (prev, note) => note.imageBase64List.length > prev ? note.imageBase64List.length : prev);
+
+    for (int i = 0; i < maxImages; i++) {
+      final columnLetter = String.fromCharCode(69 + i); // E, F, G, etc.
+      sheet.getRangeByName('${columnLetter}1').setText('Image ${i + 1}');
     }
 
-    final bytes = excel.encode();
-    if (bytes == null) return;
+    int row = 2;
+    for (var note in selectedNotes) {
+      sheet.getRangeByName('A$row').setText(note.text);
+      sheet.getRangeByName('B$row').dateTime = note.dateTime;
+      if (note.latitude != null) sheet.getRangeByName('C$row').setNumber(note.latitude!);
+      if (note.longitude != null) sheet.getRangeByName('D$row').setNumber(note.longitude!);
+
+      int imageCol = 5;
+      for (var base64Image in note.imageBase64List) {
+        final Uint8List imageBytes = base64Decode(base64Image);
+        final syncfusion.Picture picture = sheet.pictures.addStream(row, imageCol, imageBytes);
+        picture.height = 80;
+        picture.width = 80;
+        imageCol++;
+      }
+
+      row++;
+    }
+
+    final List<int> bytes = workbook.saveAsStream();
+    workbook.dispose();
 
     if (kIsWeb) {
-      // 🔵 WEB CASE
-      try {
-        final blob = html.Blob([bytes]);
-        final url = html.Url.createObjectUrlFromBlob(blob);
+      final blob = html.Blob([Uint8List.fromList(bytes)]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
 
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', 'notes_export.xlsx')
-          ..click();
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'field_notes.xlsx')
+        ..click();
 
-        html.Url.revokeObjectUrl(url);
+      html.Url.revokeObjectUrl(url);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Exported notes downloaded!')),
-        );
-      } catch (e) {
-        final emailSubject = Uri.encodeComponent('Notes Export');
-        final emailBody = Uri.encodeComponent('Please find attached the exported notes.');
-        final mailtoLink = 'mailto:?subject=$emailSubject&body=$emailBody';
-        html.window.open(mailtoLink, '_self');
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Exported notes with images downloaded!')),
+      );
     } else {
-      // 🟢 MOBILE CASE
       try {
         final dir = await getTemporaryDirectory();
-        final filePath = '${dir.path}/notes_export.xlsx';
+        final filePath = '${dir.path}/field_notes.xlsx';
         final file = File(filePath);
         await file.writeAsBytes(bytes);
 
@@ -136,12 +142,12 @@ class _ViewListScreenState extends State<ViewListScreen> {
 
         await Share.shareXFiles(
           [xFile],
-          text: 'Please find attached the exported notes.',
-          subject: 'Notes Export',
+          text: 'Please find attached the exported field notes.',
+          subject: 'Field Notes Export',
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notes export shared!')),
+          const SnackBar(content: Text('Field notes export shared!')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
