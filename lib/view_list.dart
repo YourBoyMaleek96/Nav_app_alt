@@ -19,6 +19,7 @@ class ViewListScreen extends StatefulWidget {
   _ViewListScreenState createState() => _ViewListScreenState();
 }
 
+/// ViewListScreen is the screen that displays the list of notes.
 class _ViewListScreenState extends State<ViewListScreen> {
   List<Note> _notes = [];
   bool _loading = true;
@@ -30,7 +31,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     super.initState();
     _loadNotes();
   }
-
+/// _loadNotes loads the notes from the database.
   Future<void> _loadNotes() async {
     final notes = await DBHelper().getNotes();
     setState(() {
@@ -39,12 +40,14 @@ class _ViewListScreenState extends State<ViewListScreen> {
     });
   }
 
+  /// _deleteNote deletes a note from the database.
   Future<void> _deleteNote(int? id) async {
     if (id == null) return;
     await DBHelper().deleteNote(id);
     _loadNotes();
   }
 
+  /// _toggleSelectionMode toggles the selection mode.
   void _toggleSelectionMode() {
     setState(() {
       _selectionMode = !_selectionMode;
@@ -52,6 +55,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     });
   }
 
+  /// _buildImageFromBase64 builds an image from a base64 string.
   Widget _buildImageFromBase64(String base64Str) {
     try {
       final Uint8List bytes = base64Decode(base64Str);
@@ -69,6 +73,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     }
   }
 
+  /// _exportSelected exports the selected notes to an Excel file.
   Future<void> _exportSelected() async {
     if (_selectedIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,11 +93,13 @@ class _ViewListScreenState extends State<ViewListScreen> {
 
     int maxImages = selectedNotes.fold<int>(0, (prev, note) => note.imageBase64List.length > prev ? note.imageBase64List.length : prev);
 
+    /// Create columns for each image
     for (int i = 0; i < maxImages; i++) {
       final columnLetter = String.fromCharCode(69 + i); // E, F, G, etc.
       sheet.getRangeByName('${columnLetter}1').setText('Image ${i + 1}');
     }
 
+    /// Populate data
     int row = 2;
     for (var note in selectedNotes) {
       sheet.getRangeByName('A$row').setText(note.text);
@@ -112,9 +119,11 @@ class _ViewListScreenState extends State<ViewListScreen> {
       row++;
     }
 
+    /// Save the Excel file
     final List<int> bytes = workbook.saveAsStream();
     workbook.dispose();
 
+    /// Download or share the Excel file
     if (kIsWeb) {
       final blob = html.Blob([Uint8List.fromList(bytes)]);
       final url = html.Url.createObjectUrlFromBlob(blob);
@@ -161,6 +170,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     return DateFormat('yyyy-MM-dd hh:mm a').format(dateTime);
   }
 
+  /// Build the screen.
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -17,6 +17,7 @@ class NoteScreen extends StatefulWidget {
   _NoteScreenState createState() => _NoteScreenState();
 }
 
+/// State class for the NoteScreen.
 class _NoteScreenState extends State<NoteScreen> {
   final TextEditingController _controller = TextEditingController();
   final ImagePicker _picker = ImagePicker();
@@ -44,7 +45,7 @@ class _NoteScreenState extends State<NoteScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Saves the note to the database, with optional location.
+  /// Saves the note to the database with location.
   Future<void> _saveNote() async {
     double? latitude;
     double? longitude;
@@ -68,7 +69,7 @@ class _NoteScreenState extends State<NoteScreen> {
     } catch (e) {
       // Location fetching failed - ignore for now
     }
-
+ /// Saves the note to the database.
     try {
       final note = Note(
         text: _controller.text,
@@ -102,6 +103,7 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
+  /// Builds the NoteScreen widget.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
