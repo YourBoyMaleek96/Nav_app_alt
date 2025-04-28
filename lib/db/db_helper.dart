@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sembast/sembast.dart';
-import 'package:sembast_web/sembast_web.dart' show databaseFactoryWeb;
-
+import 'package:sembast/sembast_io.dart';
+import 'package:sembast_web/sembast_web.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/note_model.dart';
 
-/// DBHelper class that handles database operations using sembast for web/mobile.
+/// A helper class for managing the database
 class DBHelper {
   static final DBHelper _instance = DBHelper._internal();
   factory DBHelper() => _instance;
@@ -13,21 +16,29 @@ class DBHelper {
   static final _store = intMapStoreFactory.store('notes');
   static Database? _db;
 
-  /// Returns the database instance.
+  /// Opens the database
   Future<Database> get database async {
     if (_db != null) return _db!;
-    _db = await databaseFactoryWeb.openDatabase('notes.db');
+
+    if (kIsWeb) {
+      _db = await databaseFactoryWeb.openDatabase('notes.db');
+    } else {
+      final dir = await getApplicationDocumentsDirectory();
+      final dbPath = '${dir.path}/notes.db';
+      _db = await databaseFactoryIo.openDatabase(dbPath);
+    }
+
     return _db!;
   }
 
-  /// Inserts a note into the database.
+  /// Inserts a note into the database
   Future<int> insertNote(Note note) async {
     final dbClient = await database;
     final key = await _store.add(dbClient, note.toMap());
     return key;
   }
 
-  /// Retrieves all notes from the database.
+  /// Updates a note in the database
   Future<List<Note>> getNotes() async {
     final dbClient = await database;
     final records = await _store.find(
@@ -40,7 +51,7 @@ class DBHelper {
     }).toList();
   }
 
-  /// Deletes a note by ID.
+  /// Updates a note in the database
   Future<int> deleteNote(int id) async {
     final dbClient = await database;
     return await _store.delete(

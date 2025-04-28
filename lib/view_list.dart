@@ -9,8 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:universal_html/html.dart' as html;
 import 'dart:io' show File;
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as syncfusion;
-import 'models/note_model.dart';
-import 'db/db_helper.dart';
+import '../models/note_model.dart';
+import '../db/db_helper.dart';
 
 class ViewListScreen extends StatefulWidget {
   const ViewListScreen({super.key});
@@ -19,6 +19,7 @@ class ViewListScreen extends StatefulWidget {
   _ViewListScreenState createState() => _ViewListScreenState();
 }
 
+/// State class for the ViewListScreen widget.
 class _ViewListScreenState extends State<ViewListScreen> {
   List<Note> _notes = [];
   bool _loading = true;
@@ -31,6 +32,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     _loadNotes();
   }
 
+  /// Loads notes from the database.
   Future<void> _loadNotes() async {
     final notes = await DBHelper().getNotes();
     setState(() {
@@ -39,12 +41,14 @@ class _ViewListScreenState extends State<ViewListScreen> {
     });
   }
 
+  /// Deletes a note from the database.
   Future<void> _deleteNote(int? id) async {
     if (id == null) return;
     await DBHelper().deleteNote(id);
     _loadNotes();
   }
 
+  /// Toggles the selection mode.
   void _toggleSelectionMode() {
     setState(() {
       _selectionMode = !_selectionMode;
@@ -52,6 +56,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     });
   }
 
+  /// Builds an image widget from a base64 string.
   Widget _buildImageFromBase64(String base64Str) {
     try {
       final Uint8List bytes = base64Decode(base64Str);
@@ -69,6 +74,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     }
   }
 
+  /// Exports the selected notes to an Excel file.
   Future<void> _exportSelected() async {
     if (_selectedIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,10 +83,12 @@ class _ViewListScreenState extends State<ViewListScreen> {
       return;
     }
 
+     /// Filter the notes based on the selected IDs
     final selectedNotes = _notes.where((n) => n.id != null && _selectedIds.contains(n.id)).toList();
     final workbook = syncfusion.Workbook();
     final sheet = workbook.worksheets[0];
 
+    /// Set the column headers
     sheet.getRangeByName('A1').setText('Text');
     sheet.getRangeByName('B1').setText('DateTime');
     sheet.getRangeByName('C1').setText('Latitude');
@@ -88,15 +96,20 @@ class _ViewListScreenState extends State<ViewListScreen> {
 
     int maxImages = selectedNotes.fold<int>(0, (prev, note) => note.imageBase64List.length > prev ? note.imageBase64List.length : prev);
 
+    /// Add image columns
     for (int i = 0; i < maxImages; i++) {
-      final columnLetter = String.fromCharCode(69 + i); // E, F, G, etc.
+      final columnLetter = String.fromCharCode(69 + i);
       sheet.getRangeByName('${columnLetter}1').setText('Image ${i + 1}');
     }
 
     int row = 2;
     for (var note in selectedNotes) {
       sheet.getRangeByName('A$row').setText(note.text);
-      sheet.getRangeByName('B$row').dateTime = note.dateTime;
+
+      final dateCell = sheet.getRangeByName('B$row');
+      dateCell.dateTime = note.dateTime;
+      dateCell.cellStyle.numberFormat = 'yyyy-mm-dd hh:mm:ss';
+
       if (note.latitude != null) sheet.getRangeByName('C$row').setNumber(note.latitude!);
       if (note.longitude != null) sheet.getRangeByName('D$row').setNumber(note.longitude!);
 
@@ -115,6 +128,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     final List<int> bytes = workbook.saveAsStream();
     workbook.dispose();
 
+    /// Download the Excel file
     if (kIsWeb) {
       final blob = html.Blob([Uint8List.fromList(bytes)]);
       final url = html.Url.createObjectUrlFromBlob(blob);
@@ -161,6 +175,7 @@ class _ViewListScreenState extends State<ViewListScreen> {
     return DateFormat('yyyy-MM-dd hh:mm a').format(dateTime);
   }
 
+  /// Builds the widget.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
